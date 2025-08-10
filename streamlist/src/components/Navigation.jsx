@@ -34,6 +34,15 @@ function Navigation() {
           </li>
           <li className="nav-item">
             <Link 
+              to="/discover" 
+              className={`nav-link ${location.pathname === '/discover' ? 'active' : ''}`}
+            >
+              <i className="fas fa-search"></i>
+              Discover
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link 
               to="/cart" 
               className={`nav-link ${location.pathname === '/cart' ? 'active' : ''}`}
             >

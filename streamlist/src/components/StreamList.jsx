@@ -20,7 +20,9 @@ import {
   Zap,
   BookOpen,
   Award,
-  TrendingUp
+  TrendingUp,
+  History,
+  Save
 } from 'lucide-react';
 import './streamlist.css';
 
@@ -32,6 +34,8 @@ function StreamList() {
   const [filterPriority, setFilterPriority] = useState('');
   const [sortBy, setSortBy] = useState('dateAdded');
   const [showCompleted, setShowCompleted] = useState(true);
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     genre: '',
@@ -46,6 +50,117 @@ function StreamList() {
     notes: '',
     rating: 0
   });
+
+  // Local Storage keys
+  const STORAGE_KEYS = {
+    STREAM_ITEMS: 'streamList_items',
+    USER_EVENTS: 'streamList_userEvents',
+    SEARCH_HISTORY: 'streamList_searchHistory',
+    FILTERS: 'streamList_filters',
+    RECENTLY_VIEWED: 'streamList_recentlyViewed',
+    USER_PREFERENCES: 'streamList_preferences'
+  };
+
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    loadFromLocalStorage();
+  }, []);
+
+  // Save to localStorage whenever streamItems changes
+  useEffect(() => {
+    if (streamItems.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.STREAM_ITEMS, JSON.stringify(streamItems));
+    }
+  }, [streamItems]);
+
+  // Save filters to localStorage
+  useEffect(() => {
+    const filters = {
+      searchTerm,
+      filterGenre,
+      filterPriority,
+      sortBy,
+      showCompleted
+    };
+    localStorage.setItem(STORAGE_KEYS.FILTERS, JSON.stringify(filters));
+  }, [searchTerm, filterGenre, filterPriority, sortBy, showCompleted]);
+
+  // Load all data from localStorage
+  const loadFromLocalStorage = () => {
+    try {
+      // Load stream items
+      const savedItems = localStorage.getItem(STORAGE_KEYS.STREAM_ITEMS);
+      if (savedItems) {
+        setStreamItems(JSON.parse(savedItems));
+      }
+
+      // Load search history
+      const savedSearchHistory = localStorage.getItem(STORAGE_KEYS.SEARCH_HISTORY);
+      if (savedSearchHistory) {
+        setSearchHistory(JSON.parse(savedSearchHistory));
+      }
+
+      // Load filters and preferences
+      const savedFilters = localStorage.getItem(STORAGE_KEYS.FILTERS);
+      if (savedFilters) {
+        const filters = JSON.parse(savedFilters);
+        setSearchTerm(filters.searchTerm || '');
+        setFilterGenre(filters.filterGenre || '');
+        setFilterPriority(filters.filterPriority || '');
+        setSortBy(filters.sortBy || 'dateAdded');
+        setShowCompleted(filters.showCompleted !== undefined ? filters.showCompleted : true);
+      }
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+    }
+  };
+
+  // Store user events in localStorage
+  const storeUserEvent = (eventType, eventData = {}) => {
+    try {
+      const userEvents = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_EVENTS) || '[]');
+      const newEvent = {
+        id: Date.now(),
+        type: eventType,
+        timestamp: new Date().toISOString(),
+        data: eventData
+      };
+      
+      userEvents.unshift(newEvent);
+      
+      // Keep only last 100 events
+      const limitedEvents = userEvents.slice(0, 100);
+      localStorage.setItem(STORAGE_KEYS.USER_EVENTS, JSON.stringify(limitedEvents));
+    } catch (error) {
+      console.error('Error storing user event:', error);
+    }
+  };
+
+  // Update search history
+  const updateSearchHistory = (term) => {
+    if (term.trim() && !searchHistory.includes(term)) {
+      const newHistory = [term, ...searchHistory].slice(0, 10); // Keep last 10 searches
+      setSearchHistory(newHistory);
+      localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(newHistory));
+      
+      storeUserEvent('search', { searchTerm: term });
+    }
+  };
+
+  // Store recently viewed items
+  const storeRecentlyViewed = (item) => {
+    try {
+      const recentlyViewed = JSON.parse(localStorage.getItem(STORAGE_KEYS.RECENTLY_VIEWED) || '[]');
+      const filteredRecent = recentlyViewed.filter(recent => recent.id !== item.id);
+      filteredRecent.unshift(item);
+      
+      // Keep only last 20 items
+      const limitedRecent = filteredRecent.slice(0, 20);
+      localStorage.setItem(STORAGE_KEYS.RECENTLY_VIEWED, JSON.stringify(limitedRecent));
+    } catch (error) {
+      console.error('Error storing recently viewed:', error);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -73,10 +188,19 @@ function StreamList() {
         rating: parseInt(formData.rating),
         dateAdded: new Date().toLocaleDateString(),
         completed: false,
-        favorite: false
+        favorite: false,
+        createdAt: new Date().toISOString()
       };
       
       setStreamItems(prev => [...prev, newItem]);
+      
+      // Store user event
+      storeUserEvent('item_added', {
+        itemId: newItem.id,
+        title: newItem.title,
+        genre: newItem.genre,
+        priority: newItem.priority
+      });
       
       // Reset form
       setFormData({
@@ -90,19 +214,49 @@ function StreamList() {
   };
 
   const deleteItem = (id) => {
+    const item = streamItems.find(item => item.id === id);
     setStreamItems(prev => prev.filter(item => item.id !== id));
+    
+    // Store user event
+    storeUserEvent('item_deleted', {
+      itemId: id,
+      title: item?.title
+    });
   };
 
   const toggleComplete = (id) => {
+    const item = streamItems.find(item => item.id === id);
+    const newCompletedState = !item.completed;
+    
     setStreamItems(prev => prev.map(item => 
-      item.id === id ? { ...item, completed: !item.completed } : item
+      item.id === id ? { ...item, completed: newCompletedState } : item
     ));
+    
+    // Store user event
+    storeUserEvent(newCompletedState ? 'item_completed' : 'item_uncompleted', {
+      itemId: id,
+      title: item?.title
+    });
+
+    // If marking as completed, store in recently viewed
+    if (newCompletedState && item) {
+      storeRecentlyViewed(item);
+    }
   };
 
   const toggleFavorite = (id) => {
+    const item = streamItems.find(item => item.id === id);
+    const newFavoriteState = !item.favorite;
+    
     setStreamItems(prev => prev.map(item => 
-      item.id === id ? { ...item, favorite: !item.favorite } : item
+      item.id === id ? { ...item, favorite: newFavoriteState } : item
     ));
+    
+    // Store user event
+    storeUserEvent(newFavoriteState ? 'item_favorited' : 'item_unfavorited', {
+      itemId: id,
+      title: item?.title
+    });
   };
 
   const startEdit = (item) => {
@@ -114,12 +268,27 @@ function StreamList() {
       notes: item.notes,
       rating: item.rating
     });
+    
+    // Store user event
+    storeUserEvent('item_edit_started', {
+      itemId: item.id,
+      title: item.title
+    });
   };
 
   const saveEdit = (id) => {
+    const item = streamItems.find(item => item.id === id);
     setStreamItems(prev => prev.map(item => 
       item.id === id ? { ...item, ...editFormData, rating: parseInt(editFormData.rating) } : item
     ));
+    
+    // Store user event
+    storeUserEvent('item_edited', {
+      itemId: id,
+      title: item?.title,
+      changes: editFormData
+    });
+    
     setEditingId(null);
   };
 
@@ -132,6 +301,42 @@ function StreamList() {
       notes: '',
       rating: 0
     });
+    
+    // Store user event
+    storeUserEvent('item_edit_cancelled', {});
+  };
+
+  // Handle search with history
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    if (value.trim()) {
+      updateSearchHistory(value);
+    }
+  };
+
+  // Handle search from history
+  const handleSearchFromHistory = (term) => {
+    setSearchTerm(term);
+    setShowSearchHistory(false);
+    storeUserEvent('search_from_history', { searchTerm: term });
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    switch(filterType) {
+      case 'genre':
+        setFilterGenre(value);
+        storeUserEvent('filter_genre_changed', { genre: value });
+        break;
+      case 'priority':
+        setFilterPriority(value);
+        storeUserEvent('filter_priority_changed', { priority: value });
+        break;
+      case 'sort':
+        setSortBy(value);
+        storeUserEvent('sort_changed', { sortBy: value });
+        break;
+    }
   };
 
   const getPriorityIcon = (priority) => {
@@ -157,6 +362,33 @@ function StreamList() {
       other: <Film className="item-genre-icon" />
     };
     return iconMap[genre] || <Film className="item-genre-icon" />;
+  };
+
+  // Export data functionality
+  const exportData = () => {
+    try {
+      const dataToExport = {
+        streamItems,
+        userEvents: JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_EVENTS) || '[]'),
+        searchHistory,
+        exportDate: new Date().toISOString()
+      };
+      
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `streamlist_backup_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+      
+      storeUserEvent('data_exported', { itemCount: streamItems.length });
+    } catch (error) {
+      console.error('Error exporting data:', error);
+    }
   };
 
   // Filter and sort items
@@ -221,6 +453,14 @@ function StreamList() {
                 <div className="stat-label">{stat.label}</div>
               </div>
             ))}
+          </div>
+
+          {/* Data Management */}
+          <div className="data-management">
+            <button onClick={exportData} className="export-button">
+              <Save className="export-icon" />
+              Export Data
+            </button>
           </div>
         </div>
       </div>
@@ -346,14 +586,35 @@ function StreamList() {
                   type="text"
                   placeholder="Search titles..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => setShowSearchHistory(true)}
                   className="search-input"
                 />
+                
+                {/* Search History Dropdown */}
+                {showSearchHistory && searchHistory.length > 0 && (
+                  <div className="search-history-dropdown">
+                    <div className="search-history-header">
+                      <History className="history-icon" />
+                      Recent Searches
+                    </div>
+                    {searchHistory.map((term, index) => (
+                      <div 
+                        key={index} 
+                        className="search-history-item"
+                        onClick={() => handleSearchFromHistory(term)}
+                      >
+                        <Clock className="history-item-icon" />
+                        {term}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <select
                 value={filterGenre}
-                onChange={(e) => setFilterGenre(e.target.value)}
+                onChange={(e) => handleFilterChange('genre', e.target.value)}
                 className="filter-select"
               >
                 <option value="">All Genres</option>
@@ -371,7 +632,7 @@ function StreamList() {
 
               <select
                 value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
+                onChange={(e) => handleFilterChange('priority', e.target.value)}
                 className="filter-select"
               >
                 <option value="">All Priorities</option>
@@ -382,7 +643,7 @@ function StreamList() {
 
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => handleFilterChange('sort', e.target.value)}
                 className="filter-select"
               >
                 <option value="dateAdded">Date Added</option>
@@ -597,6 +858,14 @@ function StreamList() {
           </div>
         )}
       </div>
+      
+      {/* Click outside to hide search history */}
+      {showSearchHistory && (
+        <div 
+          className="search-history-overlay" 
+          onClick={() => setShowSearchHistory(false)}
+        />
+      )}
     </div>
   );
 }
