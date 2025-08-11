@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react'
 import './Discover.css'
 
 function Discover() {
+  // Main movie data and loading state
   const [movies, setMovies] = useState([])
   const [loading, setLoading] = useState(true)
+  
+  // Search and filter states
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -12,19 +15,19 @@ function Discover() {
   const [showFavorites, setShowFavorites] = useState(false)
   const [favorites, setFavorites] = useState([])
   
-  // Modal states
+  // Modal-related states for movie details popup
   const [selectedMovie, setSelectedMovie] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [movieDetails, setMovieDetails] = useState(null)
   const [movieReviews, setMovieReviews] = useState([])
   const [modalLoading, setModalLoading] = useState(false)
 
-  // API configuration
+  // TMDB API setup - TODO: move to env variables
   const API_KEY = '43f637ea29ab22f9c3816114799a0c0f'
   const BASE_URL = 'https://api.themoviedb.org/3'
   const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500'
 
-  // Popular genres for filter
+  // Genre options for the filter dropdown
   const genres = [
     { id: '', name: 'All Genres' },
     { id: '28', name: 'Action' },
@@ -36,22 +39,22 @@ function Discover() {
     { id: '53', name: 'Thriller' }
   ]
 
-  // Load favorites from localStorage
+  // Helper to get favorites from localStorage
   const loadFavorites = () => {
     const savedFavorites = JSON.parse(localStorage.getItem('favorites') || '[]')
     setFavorites(savedFavorites)
     return savedFavorites
   }
 
-  // Check if movie is favorite
+  // Quick check if a movie is already favorited
   const isFavorite = (movieId) => {
     return favorites.some(fav => fav.id === movieId)
   }
 
-  // Fetch movies from TMDB API
+  // Main function to fetch movies - handles both API calls and favorites display
   const fetchMovies = async (page = 1, search = '', genre = '', sort = 'popularity.desc') => {
+    // Special case: show favorites instead of API data
     if (showFavorites) {
-      // Show favorites instead of fetching from API
       const savedFavorites = loadFavorites()
       setMovies(savedFavorites)
       setTotalPages(1)
@@ -64,6 +67,7 @@ function Discover() {
     try {
       let url = ''
       
+      // Build different URLs based on whether we're searching or discovering
       if (search) {
         url = `${BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(search)}&page=${page}`
       } else {
@@ -81,32 +85,32 @@ function Discover() {
         setTotalPages(data.total_pages)
         setCurrentPage(data.page)
         
-        // Store search in localStorage (only if not using favorites)
+        // Save search terms for later autocomplete (maybe?)
         if (search && !showFavorites) {
           const searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]')
           if (!searchHistory.includes(search)) {
             searchHistory.unshift(search)
-            const limitedHistory = searchHistory.slice(0, 10)
+            const limitedHistory = searchHistory.slice(0, 10) // Keep only recent searches
             localStorage.setItem('searchHistory', JSON.stringify(limitedHistory))
           }
         }
       }
     } catch (error) {
       console.error('Error fetching movies:', error)
+      // TODO: show user-friendly error message
     } finally {
       setLoading(false)
     }
   }
 
-  // Fetch movie details and reviews
+  // Get detailed movie info and reviews for the modal
   const fetchMovieDetails = async (movieId) => {
     setModalLoading(true)
     try {
-      // Fetch movie details
+      // Make both requests simultaneously
       const detailsResponse = await fetch(`${BASE_URL}/movie/${movieId}?api_key=${API_KEY}`)
       const details = await detailsResponse.json()
       
-      // Fetch movie reviews
       const reviewsResponse = await fetch(`${BASE_URL}/movie/${movieId}/reviews?api_key=${API_KEY}&page=1`)
       const reviewsData = await reviewsResponse.json()
       
@@ -119,23 +123,24 @@ function Discover() {
     }
   }
 
-  // Load movies on component mount and when filters change
+  // Load user's favorites when component first mounts
   useEffect(() => {
     loadFavorites()
   }, [])
 
+  // Refetch movies whenever filters change
   useEffect(() => {
     fetchMovies(1, searchTerm, selectedGenre, sortBy)
   }, [selectedGenre, sortBy, showFavorites])
 
-  // Handle search
+  // Handle the search form submission
   const handleSearch = (e) => {
     e.preventDefault()
     if (searchTerm.trim()) {
-      setShowFavorites(false) // Exit favorites view when searching
+      setShowFavorites(false) // Exit favorites mode when searching
       fetchMovies(1, searchTerm, selectedGenre, sortBy)
       
-      // Store user event
+      // Track user search behavior for analytics
       const userEvents = JSON.parse(localStorage.getItem('userEvents') || '[]')
       userEvents.push({
         type: 'search',
@@ -146,12 +151,12 @@ function Discover() {
     }
   }
 
-  // Handle movie click - open modal
+  // Open movie details modal and track the interaction
   const handleMovieClick = async (movie) => {
     setSelectedMovie(movie)
     setShowModal(true)
     
-    // Store movie click
+    // Log movie clicks for recommendation engine later
     const userEvents = JSON.parse(localStorage.getItem('userEvents') || '[]')
     userEvents.push({
       type: 'movie_click',
@@ -161,17 +166,17 @@ function Discover() {
     })
     localStorage.setItem('userEvents', JSON.stringify(userEvents))
 
-    // Store recently viewed
+    // Keep track of recently viewed movies
     const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]')
-    const filteredRecent = recentlyViewed.filter(item => item.id !== movie.id)
-    filteredRecent.unshift(movie)
-    localStorage.setItem('recentlyViewed', JSON.stringify(filteredRecent.slice(0, 20)))
+    const filteredRecent = recentlyViewed.filter(item => item.id !== movie.id) // Remove if already exists
+    filteredRecent.unshift(movie) // Add to beginning
+    localStorage.setItem('recentlyViewed', JSON.stringify(filteredRecent.slice(0, 20))) // Keep only 20
 
-    // Fetch detailed information
+    // Start loading detailed info
     await fetchMovieDetails(movie.id)
   }
 
-  // Close modal
+  // Clean up modal state when closing
   const closeModal = () => {
     setShowModal(false)
     setSelectedMovie(null)
@@ -179,8 +184,9 @@ function Discover() {
     setMovieReviews([])
   }
 
-  // Toggle favorite status
+  // Add/remove movies from favorites list
   const toggleFavorite = (movie, e) => {
+    // Prevent event bubbling when clicking heart icon on movie cards
     if (e) {
       e.stopPropagation()
     }
@@ -204,16 +210,16 @@ function Discover() {
       eventType = 'add_favorite'
     }
 
-    // Update localStorage and state
+    // Update both localStorage and component state
     localStorage.setItem('favorites', JSON.stringify(updatedFavorites))
     setFavorites(updatedFavorites)
     
-    // If currently showing favorites, update the movies list
+    // If we're currently showing favorites view, update the displayed movies
     if (showFavorites) {
       setMovies(updatedFavorites)
     }
 
-    // Store user event
+    // Track favorite actions
     const userEvents = JSON.parse(localStorage.getItem('userEvents') || '[]')
     userEvents.push({
       type: eventType,
@@ -223,25 +229,26 @@ function Discover() {
     })
     localStorage.setItem('userEvents', JSON.stringify(userEvents))
     
+    // Simple feedback - could be replaced with toast notification
     alert(message)
   }
 
-  // Handle favorites filter toggle
+  // Switch between all movies and favorites view
   const handleFavoritesToggle = () => {
     setShowFavorites(!showFavorites)
-    setSearchTerm('') // Clear search when toggling
+    setSearchTerm('') // Clear search when switching modes
     setCurrentPage(1)
   }
 
-  // Handle pagination
+  // Navigate through movie pages
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages && !showFavorites) {
       fetchMovies(newPage, searchTerm, selectedGenre, sortBy)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: 'smooth' }) // Scroll to top on page change
     }
   }
 
-  // Format review date
+  // Format review dates to be more readable
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -250,7 +257,7 @@ function Discover() {
     })
   }
 
-  // Truncate review text
+  // Shorten long review text with ellipsis
   const truncateText = (text, maxLength = 300) => {
     if (!text) return ''
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
@@ -263,7 +270,7 @@ function Discover() {
         <p>Explore thousands of movies with advanced filters</p>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search bar and filter controls */}
       <div className="controls-section">
         <form onSubmit={handleSearch} className="search-form">
           <input
@@ -272,7 +279,7 @@ function Discover() {
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search for movies..."
             className="search-input"
-            disabled={showFavorites}
+            disabled={showFavorites} // Can't search while in favorites mode
           />
           <button type="submit" className="search-btn" disabled={showFavorites}>
             <i className="fas fa-search"></i>
@@ -293,7 +300,7 @@ function Discover() {
             value={selectedGenre}
             onChange={(e) => setSelectedGenre(e.target.value)}
             className="filter-select"
-            disabled={showFavorites}
+            disabled={showFavorites} // Filters don't work in favorites mode
           >
             {genres.map(genre => (
               <option key={genre.id} value={genre.id}>{genre.name}</option>
@@ -314,7 +321,7 @@ function Discover() {
         </div>
       </div>
 
-      {/* Loading State */}
+      {/* Loading spinner */}
       {loading && (
         <div className="loading">
           <div className="loading-spinner"></div>
@@ -322,7 +329,7 @@ function Discover() {
         </div>
       )}
 
-      {/* Movies Grid */}
+      {/* Main movies grid */}
       {!loading && movies.length > 0 && (
         <div className="movies-container">
           <div className="movies-grid">
@@ -339,6 +346,7 @@ function Discover() {
                       alt={movie.title}
                     />
                   ) : (
+                    // Fallback for movies without posters
                     <div className="no-poster">
                       <i className="fas fa-film"></i>
                       <span>No Image</span>
@@ -379,7 +387,7 @@ function Discover() {
             ))}
           </div>
 
-          {/* Pagination */}
+          {/* Pagination controls - only show for API results, not favorites */}
           {totalPages > 1 && !showFavorites && (
             <div className="pagination">
               <button 
@@ -408,7 +416,7 @@ function Discover() {
         </div>
       )}
 
-      {/* No Results */}
+      {/* Empty state when no movies found */}
       {!loading && movies.length === 0 && (
         <div className="no-results">
           <i className="fas fa-search"></i>
@@ -422,7 +430,7 @@ function Discover() {
         </div>
       )}
 
-      {/* Movie Details Modal */}
+      {/* Movie details modal */}
       {showModal && selectedMovie && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -439,7 +447,7 @@ function Discover() {
               </div>
             ) : (
               <div className="modal-body">
-                {/* Movie Header */}
+                {/* Movie info section */}
                 <div className="modal-movie-header">
                   <div className="modal-poster">
                     {selectedMovie.poster_path ? (
@@ -471,6 +479,7 @@ function Discover() {
                           </span>
                         </div>
                         
+                        {/* Show genre tags if available */}
                         {movieDetails.genres && movieDetails.genres.length > 0 && (
                           <div className="genres">
                             {movieDetails.genres.map(genre => (
@@ -495,7 +504,7 @@ function Discover() {
                   </div>
                 </div>
 
-                {/* Reviews Section */}
+                {/* User reviews section */}
                 <div className="reviews-section">
                   <h3>Reviews ({movieReviews.length})</h3>
                   
@@ -506,7 +515,7 @@ function Discover() {
                     </div>
                   ) : (
                     <div className="reviews-list">
-                      {movieReviews.slice(0, 5).map(review => (
+                      {movieReviews.slice(0, 5).map(review => ( // Show only first 5 reviews
                         <div key={review.id} className="review-card">
                           <div className="review-header">
                             <div className="review-author">

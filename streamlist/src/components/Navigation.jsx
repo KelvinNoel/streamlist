@@ -3,16 +3,19 @@ import { Link, useLocation } from 'react-router-dom'
 import './Navigation.css'
 
 function Navigation() {
+  // Get current route to highlight active nav item
   const location = useLocation()
 
   return (
     <nav className="navbar">
       <div className="nav-container">
+        {/* App logo/brand - clicking goes to home */}
         <Link to="/" className="nav-logo">
           <i className="fas fa-stream"></i>
           StreamList
         </Link>
         
+        {/* Main navigation menu */}
         <ul className="nav-menu">
           <li className="nav-item">
             <Link 

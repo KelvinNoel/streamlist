@@ -12,13 +12,25 @@ function App() {
   return (
     <Router>
       <div className="App">
+        {/* Main navigation bar - stays visible on all pages */}
         <Navigation />
+        
+        {/* Main content area where page components render */}
         <main className="main-content">
           <Routes>
+            {/* Home page - shows streaming content */}
             <Route path="/" element={<StreamList />} />
+            
+            {/* Movies catalog page */}
             <Route path="/movies" element={<Movies />} />
+            
+            {/* Movie discovery with filters and search */}
             <Route path="/discover" element={<Discover />} />
+            
+            {/* Shopping cart for rentals/purchases */}
             <Route path="/cart" element={<Cart />} />
+            
+            {/* About/info page */}
             <Route path="/about" element={<About />} />
           </Routes>
         </main>

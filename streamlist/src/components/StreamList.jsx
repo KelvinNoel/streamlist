@@ -27,15 +27,22 @@ import {
 import './streamlist.css';
 
 function StreamList() {
+  // Core state management for stream items and editing
   const [streamItems, setStreamItems] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  
+  // Search and filtering state
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGenre, setFilterGenre] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
   const [sortBy, setSortBy] = useState('dateAdded');
   const [showCompleted, setShowCompleted] = useState(true);
+  
+  // Search history functionality for better UX
   const [searchHistory, setSearchHistory] = useState([]);
   const [showSearchHistory, setShowSearchHistory] = useState(false);
+  
+  // Form data for adding new items
   const [formData, setFormData] = useState({
     title: '',
     genre: '',
@@ -43,6 +50,8 @@ function StreamList() {
     notes: '',
     rating: 0
   });
+  
+  // Separate form data for editing existing items
   const [editFormData, setEditFormData] = useState({
     title: '',
     genre: '',
@@ -51,7 +60,7 @@ function StreamList() {
     rating: 0
   });
 
-  // Local Storage keys
+  // Storage keys - centralized to avoid typos and make maintenance easier
   const STORAGE_KEYS = {
     STREAM_ITEMS: 'streamList_items',
     USER_EVENTS: 'streamList_userEvents',
@@ -61,19 +70,19 @@ function StreamList() {
     USER_PREFERENCES: 'streamList_preferences'
   };
 
-  // Load data from localStorage on component mount
+  // Initialize component with saved data when mounting
   useEffect(() => {
     loadFromLocalStorage();
   }, []);
 
-  // Save to localStorage whenever streamItems changes
+  // Auto-save stream items whenever they change
   useEffect(() => {
     if (streamItems.length > 0) {
       localStorage.setItem(STORAGE_KEYS.STREAM_ITEMS, JSON.stringify(streamItems));
     }
   }, [streamItems]);
 
-  // Save filters to localStorage
+  // Persist filter settings to maintain user preferences across sessions
   useEffect(() => {
     const filters = {
       searchTerm,
@@ -85,22 +94,22 @@ function StreamList() {
     localStorage.setItem(STORAGE_KEYS.FILTERS, JSON.stringify(filters));
   }, [searchTerm, filterGenre, filterPriority, sortBy, showCompleted]);
 
-  // Load all data from localStorage
+  // Restore all user data from localStorage on app startup
   const loadFromLocalStorage = () => {
     try {
-      // Load stream items
+      // Restore stream items list
       const savedItems = localStorage.getItem(STORAGE_KEYS.STREAM_ITEMS);
       if (savedItems) {
         setStreamItems(JSON.parse(savedItems));
       }
 
-      // Load search history
+      // Restore search history for quick access to previous searches
       const savedSearchHistory = localStorage.getItem(STORAGE_KEYS.SEARCH_HISTORY);
       if (savedSearchHistory) {
         setSearchHistory(JSON.parse(savedSearchHistory));
       }
 
-      // Load filters and preferences
+      // Restore user's filter and sort preferences
       const savedFilters = localStorage.getItem(STORAGE_KEYS.FILTERS);
       if (savedFilters) {
         const filters = JSON.parse(savedFilters);
@@ -115,7 +124,7 @@ function StreamList() {
     }
   };
 
-  // Store user events in localStorage
+  // Track user interactions for analytics and debugging purposes
   const storeUserEvent = (eventType, eventData = {}) => {
     try {
       const userEvents = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_EVENTS) || '[]');
@@ -128,7 +137,7 @@ function StreamList() {
       
       userEvents.unshift(newEvent);
       
-      // Keep only last 100 events
+      // Keep storage size manageable - only store last 100 events
       const limitedEvents = userEvents.slice(0, 100);
       localStorage.setItem(STORAGE_KEYS.USER_EVENTS, JSON.stringify(limitedEvents));
     } catch (error) {
@@ -136,10 +145,10 @@ function StreamList() {
     }
   };
 
-  // Update search history
+  // Maintain search history for improved user experience
   const updateSearchHistory = (term) => {
     if (term.trim() && !searchHistory.includes(term)) {
-      const newHistory = [term, ...searchHistory].slice(0, 10); // Keep last 10 searches
+      const newHistory = [term, ...searchHistory].slice(0, 10); // Limit to 10 recent searches
       setSearchHistory(newHistory);
       localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(newHistory));
       
@@ -147,14 +156,14 @@ function StreamList() {
     }
   };
 
-  // Store recently viewed items
+  // Track recently viewed items for potential future features (recommendations, etc.)
   const storeRecentlyViewed = (item) => {
     try {
       const recentlyViewed = JSON.parse(localStorage.getItem(STORAGE_KEYS.RECENTLY_VIEWED) || '[]');
       const filteredRecent = recentlyViewed.filter(recent => recent.id !== item.id);
       filteredRecent.unshift(item);
       
-      // Keep only last 20 items
+      // Limit storage to 20 most recent items
       const limitedRecent = filteredRecent.slice(0, 20);
       localStorage.setItem(STORAGE_KEYS.RECENTLY_VIEWED, JSON.stringify(limitedRecent));
     } catch (error) {
@@ -162,6 +171,7 @@ function StreamList() {
     }
   };
 
+  // Handle form input changes for new item creation
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -170,6 +180,7 @@ function StreamList() {
     }));
   };
 
+  // Handle form input changes during item editing
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
     setEditFormData(prev => ({
@@ -178,12 +189,13 @@ function StreamList() {
     }));
   };
 
+  // Create and add a new stream item to the list
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (formData.title.trim()) {
       const newItem = {
-        id: Date.now(),
+        id: Date.now(), // Simple ID generation - sufficient for this use case
         ...formData,
         rating: parseInt(formData.rating),
         dateAdded: new Date().toLocaleDateString(),
@@ -194,7 +206,7 @@ function StreamList() {
       
       setStreamItems(prev => [...prev, newItem]);
       
-      // Store user event
+      // Track this action for analytics
       storeUserEvent('item_added', {
         itemId: newItem.id,
         title: newItem.title,
@@ -202,7 +214,7 @@ function StreamList() {
         priority: newItem.priority
       });
       
-      // Reset form
+      // Reset form to clean state
       setFormData({
         title: '',
         genre: '',
@@ -213,17 +225,19 @@ function StreamList() {
     }
   };
 
+  // Remove an item from the stream list
   const deleteItem = (id) => {
     const item = streamItems.find(item => item.id === id);
     setStreamItems(prev => prev.filter(item => item.id !== id));
     
-    // Store user event
+    // Log deletion for potential undo feature or analytics
     storeUserEvent('item_deleted', {
       itemId: id,
       title: item?.title
     });
   };
 
+  // Toggle completion status of a stream item
   const toggleComplete = (id) => {
     const item = streamItems.find(item => item.id === id);
     const newCompletedState = !item.completed;
@@ -232,18 +246,19 @@ function StreamList() {
       item.id === id ? { ...item, completed: newCompletedState } : item
     ));
     
-    // Store user event
+    // Track completion events for user behavior analysis
     storeUserEvent(newCompletedState ? 'item_completed' : 'item_uncompleted', {
       itemId: id,
       title: item?.title
     });
 
-    // If marking as completed, store in recently viewed
+    // Add completed items to recently viewed for future features
     if (newCompletedState && item) {
       storeRecentlyViewed(item);
     }
   };
 
+  // Toggle favorite status for bookmarking important items
   const toggleFavorite = (id) => {
     const item = streamItems.find(item => item.id === id);
     const newFavoriteState = !item.favorite;
@@ -252,13 +267,14 @@ function StreamList() {
       item.id === id ? { ...item, favorite: newFavoriteState } : item
     ));
     
-    // Store user event
+    // Track favorite actions for user preference insights
     storeUserEvent(newFavoriteState ? 'item_favorited' : 'item_unfavorited', {
       itemId: id,
       title: item?.title
     });
   };
 
+  // Enter edit mode for a specific item
   const startEdit = (item) => {
     setEditingId(item.id);
     setEditFormData({
@@ -269,20 +285,21 @@ function StreamList() {
       rating: item.rating
     });
     
-    // Store user event
+    // Track edit initiation for UX analysis
     storeUserEvent('item_edit_started', {
       itemId: item.id,
       title: item.title
     });
   };
 
+  // Save changes made during editing
   const saveEdit = (id) => {
     const item = streamItems.find(item => item.id === id);
     setStreamItems(prev => prev.map(item => 
       item.id === id ? { ...item, ...editFormData, rating: parseInt(editFormData.rating) } : item
     ));
     
-    // Store user event
+    // Log successful edits for feature usage tracking
     storeUserEvent('item_edited', {
       itemId: id,
       title: item?.title,
@@ -292,6 +309,7 @@ function StreamList() {
     setEditingId(null);
   };
 
+  // Cancel editing and revert to display mode
   const cancelEdit = () => {
     setEditingId(null);
     setEditFormData({
@@ -302,11 +320,11 @@ function StreamList() {
       rating: 0
     });
     
-    // Store user event
+    // Track cancellations to understand user behavior
     storeUserEvent('item_edit_cancelled', {});
   };
 
-  // Handle search with history
+  // Handle search input with history tracking
   const handleSearchChange = (value) => {
     setSearchTerm(value);
     if (value.trim()) {
@@ -314,14 +332,14 @@ function StreamList() {
     }
   };
 
-  // Handle search from history
+  // Quick search from history dropdown
   const handleSearchFromHistory = (term) => {
     setSearchTerm(term);
     setShowSearchHistory(false);
     storeUserEvent('search_from_history', { searchTerm: term });
   };
 
-  // Handle filter changes
+  // Centralized filter change handling with event tracking
   const handleFilterChange = (filterType, value) => {
     switch(filterType) {
       case 'genre':
@@ -339,6 +357,7 @@ function StreamList() {
     }
   };
 
+  // Return appropriate icon based on priority level
   const getPriorityIcon = (priority) => {
     switch(priority) {
       case 'high': return <Flame className="priority-icon" />;
@@ -348,6 +367,7 @@ function StreamList() {
     }
   };
 
+  // Map genres to their corresponding visual icons
   const getGenreIcon = (genre) => {
     const iconMap = {
       action: <Zap className="item-genre-icon" />,
@@ -364,7 +384,7 @@ function StreamList() {
     return iconMap[genre] || <Film className="item-genre-icon" />;
   };
 
-  // Export data functionality
+  // Generate JSON backup file for user data portability
   const exportData = () => {
     try {
       const dataToExport = {
@@ -383,6 +403,7 @@ function StreamList() {
       link.download = `streamlist_backup_${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       
+      // Clean up the blob URL to prevent memory leaks
       URL.revokeObjectURL(url);
       
       storeUserEvent('data_exported', { itemCount: streamItems.length });
@@ -391,7 +412,7 @@ function StreamList() {
     }
   };
 
-  // Filter and sort items
+  // Apply all active filters and sorting to the items list
   const filteredAndSortedItems = streamItems
     .filter(item => {
       const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -405,17 +426,19 @@ function StreamList() {
         case 'title':
           return a.title.localeCompare(b.title);
         case 'priority':
+          // Sort by priority weight: high > medium > low
           const priorityOrder = { high: 3, medium: 2, low: 1 };
           return priorityOrder[b.priority] - priorityOrder[a.priority];
         case 'rating':
-          return b.rating - a.rating;
+          return b.rating - a.rating; // Highest ratings first
         case 'genre':
           return a.genre.localeCompare(b.genre);
         default:
-          return new Date(b.dateAdded) - new Date(a.dateAdded);
+          return new Date(b.dateAdded) - new Date(a.dateAdded); // Most recent first
       }
     });
 
+  // Calculate statistics for the dashboard display
   const stats = {
     total: streamItems.length,
     completed: streamItems.filter(item => item.completed).length,
@@ -425,7 +448,7 @@ function StreamList() {
 
   return (
     <div className="streamlist-container">
-      {/* Hero Section */}
+      {/* Hero section with branding and key metrics */}
       <div className="hero-section">
         <div className="hero-overlay"></div>
         <div className="hero-content">
@@ -437,7 +460,7 @@ function StreamList() {
             Your ultimate entertainment companion. Track, rate, and organize your watchlist like never before.
           </p>
           
-          {/* Stats Bar */}
+          {/* Statistics dashboard showing user's streaming habits */}
           <div className="stats-grid">
             {[
               { icon: <Film className="stat-icon" />, label: 'Total Items', value: stats.total, colorClass: 'stat-icon-blue' },
@@ -455,7 +478,7 @@ function StreamList() {
             ))}
           </div>
 
-          {/* Data Management */}
+          {/* Data management tools for backup and portability */}
           <div className="data-management">
             <button onClick={exportData} className="export-button">
               <Save className="export-icon" />
@@ -466,7 +489,7 @@ function StreamList() {
       </div>
 
       <div className="main-content">
-        {/* Add New Item Section */}
+        {/* Form section for adding new streaming content */}
         <div className="form-section">
           <div className="form-header">
             <Plus className="form-header-icon" />
@@ -474,6 +497,7 @@ function StreamList() {
           </div>
           
           <div>
+            {/* Primary form fields in grid layout */}
             <div className="form-grid">
               <div className="form-group">
                 <label className="form-label">
@@ -533,6 +557,7 @@ function StreamList() {
               </div>
             </div>
 
+            {/* Secondary form fields for additional details */}
             <div className="form-grid-2">
               <div className="form-group">
                 <label className="form-label">
@@ -576,10 +601,11 @@ function StreamList() {
           </div>
         </div>
 
-        {/* Controls Section */}
+        {/* Search, filter, and sort controls */}
         <div className="controls-section">
           <div className="controls-container">
             <div className="controls-group">
+              {/* Search with history dropdown for better UX */}
               <div className="search-container">
                 <Search className="search-icon" />
                 <input
@@ -591,7 +617,7 @@ function StreamList() {
                   className="search-input"
                 />
                 
-                {/* Search History Dropdown */}
+                {/* Quick access to previous searches */}
                 {showSearchHistory && searchHistory.length > 0 && (
                   <div className="search-history-dropdown">
                     <div className="search-history-header">
@@ -612,6 +638,7 @@ function StreamList() {
                 )}
               </div>
 
+              {/* Filter dropdowns for quick content discovery */}
               <select
                 value={filterGenre}
                 onChange={(e) => handleFilterChange('genre', e.target.value)}
@@ -654,6 +681,7 @@ function StreamList() {
               </select>
             </div>
 
+            {/* Toggle for showing/hiding completed items */}
             <button
               onClick={() => setShowCompleted(!showCompleted)}
               className={`toggle-button ${showCompleted ? 'toggle-button-active' : 'toggle-button-inactive'}`}
@@ -664,7 +692,7 @@ function StreamList() {
           </div>
         </div>
 
-        {/* Stream List */}
+        {/* Main content area - either empty state or item grid */}
         {filteredAndSortedItems.length === 0 ? (
           <div className="empty-state">
             <Film className="empty-icon" />
@@ -681,10 +709,10 @@ function StreamList() {
               <div
                 key={item.id}
                 className={`item-card ${item.completed ? 'item-card-completed' : ''}`}
-                style={{ animationDelay: `${index * 0.1}s` }}
+                style={{ animationDelay: `${index * 0.1}s` }} // Staggered animation for smooth entrance
               >
                 {editingId === item.id ? (
-                  // Edit Mode
+                  // Inline editing form for quick item updates
                   <div className="edit-form">
                     <input
                       type="text"
@@ -746,6 +774,7 @@ function StreamList() {
                       className="edit-textarea"
                     />
                     
+                    {/* Edit form action buttons */}
                     <div className="edit-actions">
                       <button
                         onClick={() => saveEdit(item.id)}
@@ -764,7 +793,7 @@ function StreamList() {
                     </div>
                   </div>
                 ) : (
-                  // Display Mode
+                  // Standard item display with all details and actions
                   <div>
                     <div className="item-header">
                       <div className="item-info">
@@ -779,6 +808,7 @@ function StreamList() {
                         )}
                       </div>
                       
+                      {/* Quick action buttons for favorite and delete */}
                       <div className="item-actions">
                         <button
                           onClick={() => toggleFavorite(item.id)}
@@ -799,6 +829,7 @@ function StreamList() {
                       </div>
                     </div>
 
+                    {/* Item metadata and details */}
                     <div className="item-details">
                       <div className="item-detail-row">
                         <div className={`priority-badge priority-${item.priority}`}>
@@ -806,6 +837,7 @@ function StreamList() {
                           <span className="priority-text">{item.priority}</span>
                         </div>
                         
+                        {/* Show rating only if user has rated the item */}
                         {item.rating > 0 && (
                           <div className="rating-display">
                             <Star className="rating-icon" />
@@ -819,6 +851,7 @@ function StreamList() {
                         Added {item.dateAdded}
                       </div>
 
+                      {/* Display notes only if they exist */}
                       {item.notes && (
                         <div className="notes-container">
                           <p className="notes-text">{item.notes}</p>
@@ -826,6 +859,7 @@ function StreamList() {
                       )}
                     </div>
 
+                    {/* Primary action buttons for completion and editing */}
                     <div className="item-actions-container">
                       <button
                         onClick={() => toggleComplete(item.id)}
@@ -859,7 +893,7 @@ function StreamList() {
         )}
       </div>
       
-      {/* Click outside to hide search history */}
+      {/* Overlay to close search history when clicking outside */}
       {showSearchHistory && (
         <div 
           className="search-history-overlay" 
