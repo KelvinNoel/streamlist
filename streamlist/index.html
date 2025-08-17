@@ -1,13 +1,175 @@
-<!-- streamlist/index.html -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>StreamList</title>
+    
+    <!-- SEO Meta Tags -->
+    <title>StreamList - Your Ultimate Entertainment Companion</title>
+    <meta name="description" content="Track, rate, and organize your streaming watchlist. Discover new movies and shows with StreamList Pro." />
+    <meta name="keywords" content="streaming, movies, watchlist, entertainment, tv shows, ratings, discover" />
+    <meta name="author" content="StreamList Team" />
+    
+    <!-- Theme and Brand Colors -->
+    <meta name="theme-color" content="#1a1a2e" />
+    <meta name="msapplication-TileColor" content="#1a1a2e" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://streamlist.app/" />
+    <meta property="og:title" content="StreamList - Your Ultimate Entertainment Companion" />
+    <meta property="og:description" content="Track, rate, and organize your streaming watchlist. Discover new movies and shows." />
+    <meta property="og:image" content="/og-image.jpg" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://streamlist.app/" />
+    <meta property="twitter:title" content="StreamList - Your Ultimate Entertainment Companion" />
+    <meta property="twitter:description" content="Track, rate, and organize your streaming watchlist. Discover new movies and shows." />
+    <meta property="twitter:image" content="/twitter-image.jpg" />
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    
+    <!-- Preconnect to external domains for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+    
+    <!-- DNS Prefetch for external resources -->
+    <link rel="dns-prefetch" href="//api.themoviedb.org" />
+    
+    <!-- Prevent FOUC (Flash of Unstyled Content) -->
+    <style>
+      /* Critical CSS - inline styles for immediate rendering */
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #0f0f0f;
+        color: #ffffff;
+      }
+      
+      .loading-spinner {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
+      }
+      
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #333;
+        border-top: 4px solid #6c5ce7;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 16px;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .error-boundary {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        text-align: center;
+        padding: 20px;
+        background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
+      }
+      
+      .error-boundary h2 {
+        color: #e74c3c;
+        margin-bottom: 16px;
+      }
+      
+      .error-boundary button {
+        background: #6c5ce7;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 16px;
+        font-size: 16px;
+      }
+      
+      .error-boundary button:hover {
+        background: #5a4dd0;
+      }
+    </style>
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "StreamList",
+      "description": "Track, rate, and organize your streaming watchlist",
+      "url": "https://streamlist.app",
+      "applicationCategory": "Entertainment",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- No JS fallback -->
+    <noscript>
+      <div style="text-align: center; padding: 50px; background: #1a1a2e; color: white;">
+        <h1>JavaScript Required</h1>
+        <p>StreamList requires JavaScript to function properly. Please enable JavaScript in your browser.</p>
+      </div>
+    </noscript>
+    
+    <!-- Main app container -->
+    <div id="root">
+      <!-- Fallback loading state -->
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Loading StreamList...</p>
+      </div>
+    </div>
+    
+    <!-- Main application script -->
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Service Worker for offline functionality (optional) -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
