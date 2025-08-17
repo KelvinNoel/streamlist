@@ -10,7 +10,7 @@ import './App.css'
 // Lazy load components for better performance
 const StreamList = React.lazy(() => import('./components/StreamList'))
 const Movies = React.lazy(() => import('./components/Movies'))
-const Discover = React.lazy(() => import('./components/Discover'))
+const Discover = React.lazy(() => import('./components/discover'))
 const About = React.lazy(() => import('./components/About'))
 const Cart = React.lazy(() => import('./components/Cart'))
 
