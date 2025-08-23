@@ -10,7 +10,7 @@ function Movies() {
       <div className="empty-state">
         <i className="fas fa-clapperboard"></i>
         <h3>Movies Page Coming Soon</h3>
-        <p>This page will be built in Week 4</p>
+        <p></p>
       </div>
     </div>
   )

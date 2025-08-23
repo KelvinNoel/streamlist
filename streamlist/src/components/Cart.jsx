@@ -10,7 +10,7 @@ function Cart() {
       <div className="empty-state">
         <i className="fas fa-cart-shopping"></i>
         <h3>Cart Page Coming Soon</h3>
-        <p>This page will be built in Week 4</p>
+        <p></p>
       </div>
     </div>
   )

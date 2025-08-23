@@ -5,6 +5,7 @@ import Navigation from './components/Navigation'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import LoadingSpinner from './components/LoadingSpinner.jsx'
 import NotFound from './components/NotFound.jsx'
+import InstallButton from './components/InstallButton.jsx'
 import './App.css'
 
 // Lazy load components for better performance
@@ -46,6 +47,9 @@ function App() {
               </Routes>
             </Suspense>
           </main>
+          
+          {/* PWA Install Button - shows when app can be installed */}
+          <InstallButton />
         </div>
       </Router>
     </ErrorBoundary>
